@@ -1,19 +1,37 @@
-# Appointment Summary Messages
-This assignment should give you a quick overview of the kinds of tasks handled on the backend.
+# Appointment Summary Generator - BestoSys Assignment
 
-You need to first set up your local database by inserting the data from the given .csv files. You will then summarize them two ways through Golang code, and write the summarized messages to new tables.
+This Go project generates summary messages for doctors and centers based on appointment data for a given date. The summaries are then stored in the database.
 
-**The expected format of the summary messages is explained in sender/sender.go.**
+## 🛠 Tech Stack
 
-You have been given some boilerplate code for the flow. Please read through it, starting from main.go, and clarify as needed.
+- **Language:** Go (Golang)
+- **Database:** MySQL
+- **Dependencies:** 
+  - `github.com/go-sql-driver/mysql`
 
-### You can import any packages and change any function signatures as needed. Please focus on writing clean and performant code. You can also modify the boilerplate - the end result is what is important!
-### Note that you might need to create indexes in the tables to optimize your queries. You are free to do so.
+## 📁 Project Structure
 
-You can run the program as ./main date (or .\main.exe date on Windows).
+## ⚙️ Setup Instructions
 
-#### Brief explanation of each table given to you in the .csv files:
-- Center: Represents a specific clinic. Contains a unique id (CenterID) and the name of the center
-- Patient: Represents a specific person. Contains a unique id (PatientID), the person's name info (Salutation and Name), and their mobile number
-- DoctorStaff: Represents a doctor. Contains a unique id (DoctorStaffID), the doctor's name, and their mobile
-- Appointment: Represents an appointment a patient has with a doctor at a specific center. Contains a unique identifier, the center, doctor, and patient IDs, the start and end time, the status (S for scheduled, C for cancelled), and the treatment category (Consultation, Not Specified, Oral Surgery, Ortho, Endo). **Note that cancelled appointments should not show up in any summary message, in either the doctor-wise messages or in the center-wise messages**
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/JayeshJadhav1107/AppointmentSummary_Assignment.git
+   cd AppointmentSummary_Assignment
+
+2. Run the project:
+
+go run main.go 2025-05-12 (sample date)
+Replace 2025-05-12 with any valid date in YYYY-MM-DD format.
+
+📌 Features
+Fetches appointment data for a given date.
+Groups data by Doctor and Center.
+Calculates total appointments, duration, and patient info.
+Stores summary messages in the database.
+Logs inserted messages to the console.
+
+🧪 Example Output
+'1', '117800117', '8900000117', 'Dr. Beb Mem\'s appointments on 12 May, 2025 at Kharadi: 1\n9:30 pm, 1h 15m: Mr Qoh Tow (Oral Surgery)'
+
+🙋 Author
+Jayesh Jadhav
