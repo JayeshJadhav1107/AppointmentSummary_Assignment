@@ -1,23 +1,37 @@
 package main
 
 import (
-	"AppointmentSummmary_Assignment/database"
-	"AppointmentSummmary_Assignment/sender"
+	"AppointmentSummary_Assignment/database"
+	"AppointmentSummary_Assignment/sender"
 	"fmt"
 	"os"
 )
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("Invalid number of arguments. Expected usage: ./main <date>")
-		return
+		fmt.Println("Usage: go run main.go <yyyy-mm-dd>")
+		os.Exit(1)
 	}
 	date := os.Args[1]
+
+	database.Init()
+
 	appointments, err := database.ReadDataForDate(date)
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error reading data: %v\n", err)
+		os.Exit(1)
 	}
-	if err = sender.CreateAndScheduleSummaryAppointmentMessages(appointments); err != nil {
-		panic(err)
+
+	if len(appointments) == 0 {
+		fmt.Println("No appointments found for the given date.")
+		return
 	}
+
+	err = sender.CreateAndScheduleSummaryAppointmentMessages(date, appointments)
+	if err != nil {
+		fmt.Printf("Error generating summary messages: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("✅ Summary messages generated and stored successfully.")
 }
