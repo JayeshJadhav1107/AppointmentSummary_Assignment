@@ -1,35 +1,138 @@
 package sender
 
-// CreateAndScheduleSummaryAppointmentMessages
-// Creates and schedules summary appointment messages, and outputs them to tables. The messages are for appointments on a given date (passed as a parameter to your binary)
-// Expected output format:
-//
-// MESSAGE FOR A DOCTOR FOR A GIVEN CENTER (THE APPOINTMENTS SHOULD BE SORTED BY TIME):
-// Dr. <DoctorName>'s appointments on <Date> at <CenterName>: <Number of appointments>
-// <Time>, <Duration>: <PatientName> (<TreatmentCategory>)
-// <Time>, <Duration>: <PatientName> (<TreatmentCategory>)
-// ...so on.
-//
-// Example:
-// Dr. John's appointments on <12th May, 2025> at Aundh: 3
-// 10:00 am, 1h 30m: Ms. Alice (Consultation)
-// 11:30 am, 15m: Mr. Bob
-// 12:00 pm, 1h: Mr. Charlie (Ortho)
-//
-// Notice that Mr. Bob's appointment does not have a category in the message. This is because the treatment category for this appointment was "Not Specified". If an appointment has this treatment category, you must leave the category blank in the message.
-//
-// SUMMARY OF THE DAY FOR A GIVEN LOCATION:
-// Summary of appointments at <CenterName> on <Date>: <Number of appointments>
-// Dr. <DoctorName>: <Number of appointments>
-// Dr. <DoctorName>: <Number of appointments>
-//
-// Example:
-// Summary of appointments at Aundh on 12th May, 2025: 3
-// Dr. John: 3
-//
-// You can insert all messages sent to doctors in a table called DoctorMessages. It should have at least the person ID of the doctor and the doctor's phone number along with the message
-// You can insert all messages that summarize a center into a table called CenterMessages. It should contain at least the center ID of the center along with the message
-// TODO Change function input parameter type if needed
-func CreateAndScheduleSummaryAppointmentMessages(appointments []any) (err error) {
-	panic("implement me")
+import (
+	"AppointmentSummary_Assignment/models"
+	"database/sql"
+	"fmt"
+	"sort"
+	"strings"
+	"time"
+
+	_ "github.com/go-sql-driver/mysql"
+)
+
+func CreateAndScheduleSummaryAppointmentMessages(date string, appointments []models.Appointment) error {
+	doctorMap := make(map[string][]models.Appointment)
+	centerMap := make(map[int]map[int]int)
+	centerTotal := make(map[int]int)
+	centerNames := make(map[int]string)
+
+	for _, appt := range appointments {
+		key := fmt.Sprintf("%d_%d", appt.CenterID, appt.DoctorID)
+		doctorMap[key] = append(doctorMap[key], appt)
+
+		if centerMap[appt.CenterID] == nil {
+			centerMap[appt.CenterID] = make(map[int]int)
+		}
+		centerMap[appt.CenterID][appt.DoctorID]++
+		centerTotal[appt.CenterID]++
+		centerNames[appt.CenterID] = appt.CenterName
+	}
+
+	var doctorMsgs []models.DoctorMessage
+	var centerMsgs []models.CenterMessage
+
+	parsedDate, _ := time.Parse("2006-01-02", date)
+	dateStr := parsedDate.Format("2 Jan, 2006")
+
+	for _, appts := range doctorMap {
+		if len(appts) == 0 {
+			continue
+		}
+		first := appts[0]
+		header := fmt.Sprintf("Dr. %s's appointments on %s at %s: %d",
+			first.DoctorName, dateStr, first.CenterName, len(appts),
+		)
+
+		sort.Slice(appts, func(i, j int) bool {
+			return appts[i].StartTime.Before(appts[j].StartTime)
+		})
+
+		lines := []string{header}
+		for _, a := range appts {
+			start := a.StartTime.Format("3:04 pm")
+			duration := a.EndTime.Sub(a.StartTime)
+			h := int(duration.Hours())
+			m := int(duration.Minutes()) % 60
+
+			durStr := ""
+			if h > 0 {
+				durStr += fmt.Sprintf("%dh ", h)
+			}
+			if m > 0 {
+				durStr += fmt.Sprintf("%dm", m)
+			}
+			durStr = strings.TrimSpace(durStr)
+
+			category := ""
+			if a.TreatmentCategory != "Not Specified" {
+				category = fmt.Sprintf(" (%s)", a.TreatmentCategory)
+			}
+
+			line := fmt.Sprintf("%s, %s: %s%s", start, durStr, a.PatientName, category)
+			lines = append(lines, line)
+		}
+
+		msg := strings.Join(lines, "\n")
+		doctorMsgs = append(doctorMsgs, models.DoctorMessage{
+			DoctorID:    first.DoctorID,
+			DoctorPhone: first.DoctorMobile,
+			Message:     msg,
+		})
+	}
+
+	for centerID, docMap := range centerMap {
+		centerName := centerNames[centerID]
+		header := fmt.Sprintf("Summary of appointments at %s on %s: %d",
+			centerName, dateStr, centerTotal[centerID],
+		)
+
+		lines := []string{header}
+		for docID, count := range docMap {
+			var doctorName string
+			for _, a := range appointments {
+				if a.CenterID == centerID && a.DoctorID == docID {
+					doctorName = a.DoctorName
+					break
+				}
+			}
+			lines = append(lines, fmt.Sprintf("Dr. %s: %d", doctorName, count))
+		}
+
+		msg := strings.Join(lines, "\n")
+		centerMsgs = append(centerMsgs, models.CenterMessage{
+			CenterID: centerID,
+			Message:  msg,
+		})
+	}
+
+	return saveMessages(doctorMsgs, centerMsgs)
+}
+
+func saveMessages(dMsgs []models.DoctorMessage, cMsgs []models.CenterMessage) error {
+	db, err := sql.Open("mysql", "root:root@tcp(127.0.0.1:3306)/bestosys")
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	for _, msg := range dMsgs {
+		fmt.Println("Inserting doctor message:", msg)
+		_, err := db.Exec("INSERT INTO doctormessages (DoctorID, Mobile, Message) VALUES (?, ?, ?)",
+			msg.DoctorID, msg.DoctorPhone, msg.Message)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, msg := range cMsgs {
+		fmt.Println("Inserting center message:", msg)
+		_, err := db.Exec("INSERT INTO centermessages (CenterID, Message) VALUES (?, ?)",
+			msg.CenterID, msg.Message)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
