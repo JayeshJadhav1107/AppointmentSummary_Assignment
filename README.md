@@ -4,12 +4,11 @@ This Go project generates summary messages for doctors and centers based on appo
 
 ## 🛠 Tech Stack
 
-- **Language:** Go (Golang)
-- **Database:** MySQL
-- **Dependencies:** 
+- Language: Go (Golang)
+- Database: MySQL
+- Dependencies: 
   - `github.com/go-sql-driver/mysql`
-
-## 📁 Project Structure
+  - 
 
 ## ⚙️ Setup Instructions
 
@@ -20,8 +19,18 @@ This Go project generates summary messages for doctors and centers based on appo
 
 2. Run the project:
 
-go run main.go 2025-05-12 (sample date)
+``` go run main.go 2025-05-12``` (sample date)
 Replace 2025-05-12 with any valid date in YYYY-MM-DD format.
+
+3. Database Setup
+
+1. Make sure MySQL is installed and running.
+2. Create a database named `bestosys`.
+3. Run the following command to import the schema:
+
+```bash
+mysql -u root -p bestosys < schema.sql
+```
 
 📌 Features
 Fetches appointment data for a given date.
